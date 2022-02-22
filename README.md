@@ -1,138 +1,38 @@
-Mininet: Rapid Prototyping for Software Defined Networks
-========================================================
-*The best way to emulate almost any network on your laptop!*
+#使用文档
 
-Mininet 2.3.0
+1.下载与安装
+通过git下载本项目
 
-[![Build Status][1]](https://github.com/mininet/mininet/actions)
+`$sudo git clone https://github.com/xueying1111/miniICS.git`
+
+下载完成后，进入util目录，使用如下命令安装
+
+`$sudo ./install.sh`
+
+2.使用
+a.通过命令行，进入目录`examples`,运行如下命令。
+
+`$sudo python miniedit.py`
+
+启动可视化操作窗口
+
+b.通过左侧工具栏，建立自己的拓扑。
+
+c.完成拓扑的创建后，在上方工具栏找到Edit->Preferences,勾选Start CLI,若未勾选，则不会启动命令行模式。
+
+d.点击左下角Run按钮，启动。
+
+e.此时控制台会进入mininet命令行模式，在初始化完成时，由于本项目基于零信任基础建立，所有主机之间是互相断开的状态，需要身份验证通过后方可建立连接。
+此时使用`pingall`命令，会发现主机之间是ping不通的状态，此时，我们需要让他们建立连接，使用如下命令操作：
+
+`valid host1 host2 password`
+
+该valid命令接受三个必要参数：
+host1:此参数为需要建立的两台主机中的其中一台，为其名称，可通过miniedit界面查看主机名称，也可通过右键主机，选择Properties,修改Hostname修改该名称。
+host2：此参数为需要建立的两台主机中的另一台，同上。
+password：此参数为设置的秘钥，可通过项目目录下cli.py文件，找到SDPICSPwd参数，修改秘钥。
+
+在密码正确，且两台主机都存在的情况下，校验通过，会为这两台设备建立连接，使用`ping host1 host2`或`pingall`查看连接状态，此时会发现除了这两台主机能相互ping通，其他主机都处于无法ping通状态。
 
 
-### What is Mininet?
 
-Mininet emulates a complete network of hosts, links, and switches
-on a single machine.  To create a sample two-host, one-switch network,
-just run:
-
-  `sudo mn`
-
-Mininet is useful for interactive development, testing, and demos,
-especially those using OpenFlow and SDN.  OpenFlow-based network
-controllers prototyped in Mininet can usually be transferred to
-hardware with minimal changes for full line-rate execution.
-
-### How does it work?
-
-Mininet creates virtual networks using process-based virtualization
-and network namespaces - features that are available in recent Linux
-kernels.  In Mininet, hosts are emulated as `bash` processes running in
-a network namespace, so any code that would normally run on a Linux
-server (like a web server or client program) should run just fine
-within a Mininet "Host".  The Mininet "Host" will have its own private
-network interface and can only see its own processes.  Switches in
-Mininet are software-based switches like Open vSwitch or the OpenFlow
-reference switch.  Links are virtual ethernet pairs, which live in the
-Linux kernel and connect our emulated switches to emulated hosts
-(processes).
-
-### Features
-
-Mininet includes:
-
-* A command-line launcher (`mn`) to instantiate networks.
-
-* A handy Python API for creating networks of varying sizes and
-  topologies.
-
-* Examples (in the `examples/` directory) to help you get started.
-
-* Full API documentation via Python `help()` docstrings, as well as
-  the ability to generate PDF/HTML documentation with `make doc`.
-
-* Parametrized topologies (`Topo` subclasses) using the Mininet
-  object.  For example, a tree network may be created with the
-  command:
-
-  `mn --topo tree,depth=2,fanout=3`
-
-* A command-line interface (`CLI` class) which provides useful
-  diagnostic commands (like `iperf` and `ping`), as well as the
-  ability to run a command to a node. For example,
-
-  `mininet> h11 ifconfig -a`
-
-  tells host h11 to run the command `ifconfig -a`
-
-* A "cleanup" command to get rid of junk (interfaces, processes, files
-  in /tmp, etc.) which might be left around by Mininet or Linux. Try
-  this if things stop working!
-
-  `mn -c`
-
-### Python 3 Support
-
-- Mininet 2.3.0 supports Python 3 and Python 2!
-
-- You can install both the Python 3 and Python 2 versions of
-Mininet side by side, but the most recent installation will
-determine which Python version is used by default by `mn`.
-
-- You can run `mn` directly with Python 2 or Python 3,
-  as long as the appropriate version of Mininet is installed,
-  e.g.
-
-      $ sudo python2 `which mn`
-
-- More information regarding Python 3 and Python 2 support
-  may be found in the release notes on http://docs.mininet.org.
-
-### Other Enhancements and Information
-
-- Support for Ubuntu 20.04 LTS (and 18.04 and 16.04)
-
-- More reliable testing and CI via github actions
-
-- Additional information about this release and previous releases
-  may be found in the release notes on http://docs.mininet.org.
-
-### Installation
-
-See `INSTALL` for installation instructions and details.
-
-### Documentation
-
-In addition to the API documentation (`make doc`), much useful
-information, including a Mininet walkthrough and an introduction
-to the Python API, is available on the
-[Mininet Web Site](http://mininet.org).
-There is also a wiki which you are encouraged to read and to
-contribute to, particularly the Frequently Asked Questions
-(FAQ) at http://faq.mininet.org.
-
-### Support
-
-Mininet is community-supported. We encourage you to join the
-Mininet mailing list, `mininet-discuss` at:
-
-<https://mailman.stanford.edu/mailman/listinfo/mininet-discuss>
-
-### Join Us
-
-Thanks again to all of the Mininet contributors and users!
-
-Mininet is an open source project and is currently hosted
-at <https://github.com/mininet>.  You are encouraged to download
-the code, examine it, modify it, and submit bug reports, bug fixes,
-feature requests, new features and other issues and pull requests.
-Thanks to everyone who has contributed code to the Mininet project
-(see CONTRIBUTORS for more info!) It is because of everyone's
-hard work that Mininet continues to grow and improve.
-
-### Enjoy Mininet
-
-Have fun! We look forward to seeing what you will do with Mininet
-to change the networking world.
-
-Bob Lantz,
-on behalf of the Mininet Contributors
-
-[1]: https://github.com/mininet/mininet/workflows/mininet-tests/badge.svg
