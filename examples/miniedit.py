@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 """
 MiniEdit: a simple network editor for Mininet
@@ -13,30 +13,16 @@ Controller icon from http://semlabs.co.uk/
 OpenFlow icon from https://www.opennetworking.org/
 """
 
-import json
-import os
-import re
-import sys
+# Miniedit needs some work in order to pass pylint...
+# pylint: disable=line-too-long,too-many-branches
+# pylint: disable=too-many-statements,attribute-defined-outside-init
+# pylint: disable=missing-docstring
 
-from distutils.version import StrictVersion
-from functools import partial
+MINIEDIT_VERSION = '2.2.0.1'
+
+import sys
 from optparse import OptionParser
 from subprocess import call
-from sys import exit  # pylint: disable=redefined-builtin
-
-from mininet.log import info, debug, warn, setLogLevel
-from mininet.net import Mininet, VERSION
-from mininet.util import (netParse, ipAdd, quietRun,
-                          buildTopo, custom, customClass )
-from mininet.term import makeTerm, cleanUpScreens
-from mininet.node import (Controller, RemoteController, NOX, OVSController,
-                          CPULimitedHost, Host, Node,
-                          OVSSwitch, UserSwitch, IVSSwitch )
-from mininet.link import TCLink, Intf, Link
-from mininet.cli import CLI
-from mininet.moduledeps import moduleDeps
-from mininet.topo import SingleSwitchTopo, LinearTopo, SingleSwitchReversedTopo
-from mininet.topolib import TreeTopo
 
 # pylint: disable=import-error
 if sys.version_info[0] == 2:
@@ -61,24 +47,38 @@ else:
     from tkinter import font as tkFont
     from tkinter import simpledialog as tkSimpleDialog
     from tkinter import filedialog as tkFileDialog
-# someday: from ttk import *
 # pylint: enable=import-error
 
-
-# Miniedit still needs work in order to pass pylint...
-# pylint: disable=line-too-long,too-many-branches
-# pylint: disable=too-many-statements,attribute-defined-outside-init
-# pylint: disable=missing-docstring,too-many-ancestors
-# pylint: disable=too-many-nested-blocks,too-many-arguments
-
-
-MINIEDIT_VERSION = '2.2.0.1'
+import re
+import json
+from distutils.version import StrictVersion
+import os
+from functools import partial
 
 if 'PYTHONPATH' in os.environ:
     sys.path = os.environ[ 'PYTHONPATH' ].split( ':' ) + sys.path
 
+# someday: from ttk import *
+
+from mininet.log import info, debug, warn, setLogLevel
+from mininet.net import Mininet, VERSION
+from mininet.util import netParse, ipAdd, quietRun
+from mininet.util import buildTopo
+from mininet.util import custom, customClass
+from mininet.term import makeTerm, cleanUpScreens
+from mininet.node import Controller, RemoteController, NOX, OVSController
+from mininet.node import CPULimitedHost, Host, Node
+from mininet.node import OVSSwitch, UserSwitch
+from mininet.link import TCLink, Intf, Link
+from mininet.cli import CLI
+from mininet.moduledeps import moduleDeps
+from mininet.topo import SingleSwitchTopo, LinearTopo, SingleSwitchReversedTopo
+from mininet.topolib import TreeTopo
+
 info( 'MiniEdit running against Mininet '+VERSION, '\n' )
 MININET_VERSION = re.sub(r'[^\d\.]', '', VERSION)
+if StrictVersion(MININET_VERSION) > StrictVersion('2.0'):
+    from mininet.node import IVSSwitch
 
 TOPODEF = 'none'
 TOPOS = { 'minimal': lambda: SingleSwitchTopo( k=2 ),
@@ -138,7 +138,6 @@ class LegacyRouter( Node ):
     def __init__( self, name, inNamespace=True, **params ):
         Node.__init__( self, name, inNamespace, **params )
 
-    # pylint: disable=arguments-differ
     def config( self, **_params ):
         if self.intfs:
             self.setParam( _params, 'setIP', ip='0.0.0.0' )
@@ -440,45 +439,6 @@ class CustomDialog(object):
     def okAction(self):
         self.apply()
         self.top.destroy()
-
-
-class FirewallDialog(CustomDialog):
-
-    def __init__(self, master, title, prefDefaults):
-
-        self.prefValues = prefDefaults
-        self.result = None
-
-        CustomDialog.__init__(self, master, title)
-
-    def body(self, master):
-        self.rootFrame = master
-        n = Notebook(self.rootFrame)
-        self.propFrame = Frame(n)
-        n.add(self.propFrame, text='Properties')
-        n.pack()
-
-        ### TAB 1
-        # Field for Hostname
-        Label(self.propFrame, text="WhiteListIP:").grid(row=0, sticky=E)
-        self.hostnameEntry = Entry(self.propFrame)
-        self.hostnameEntry.grid(row=0, column=1)
-        if 'WhiteListIP' in self.prefValues:
-            self.hostnameEntry.insert(0, self.prefValues['WhiteListIP'])
-
-        # Field for Switch IP
-        Label(self.propFrame, text="BlackListIP:").grid(row=1, sticky=E)
-        self.ipEntry = Entry(self.propFrame)
-        self.ipEntry.grid(row=1, column=1)
-        if 'BlackListIP' in self.prefValues:
-            self.ipEntry.insert(0, self.prefValues['BlackListIP'])
-
-
-    def apply(self):
-        results = {'BlackListIP': self.hostnameEntry.get(),
-                   'WhiteListIP': self.ipEntry.get()}
-        self.result = results
-        info(str(self.result))
 
 class HostDialog(CustomDialog):
 
@@ -858,8 +818,8 @@ class VerticalScrolledTable(LabelFrame):
     * This frame only allows vertical scrolling
 
     """
-    def __init__(self, parent, rows=2, columns=2, title=None, **kw):
-        LabelFrame.__init__(self, parent, text=title, padx=5, pady=5, **kw)
+    def __init__(self, parent, rows=2, columns=2, title=None, *args, **kw):
+        LabelFrame.__init__(self, parent, text=title, padx=5, pady=5, *args, **kw)
 
         # create a canvas object and a vertical scrollbar for scrolling it
         vscrollbar = Scrollbar(self, orient=VERTICAL)
@@ -895,6 +855,8 @@ class VerticalScrolledTable(LabelFrame):
                 canvas.itemconfigure(interior_id, width=canvas.winfo_width())
         canvas.bind('<Configure>', _configure_canvas)
 
+        return
+
 class TableFrame(Frame):
     def __init__(self, parent, rows=2, columns=2):
 
@@ -926,7 +888,7 @@ class TableFrame(Frame):
             label.grid(row=self.rows, column=column, sticky="wens", padx=1, pady=1)
             if value is not None:
                 label.insert(0, value[column])
-            if readonly:
+            if readonly == True:
                 label.configure(state='readonly')
             current_row.append(label)
         self._widgets.append(current_row)
@@ -1188,7 +1150,7 @@ class MiniEdit( Frame ):
         self.images = miniEditImages()
         self.buttons = {}
         self.active = None
-        self.tools = ( 'Select', 'Host', 'Switch', 'LegacySwitch', 'LegacyRouter', 'NetLink', 'Controller', 'PLC', 'HMI', 'SCADA', 'SDPG', 'SDPC', 'FW' )
+        self.tools = ( 'Select', 'Host', 'Switch', 'LegacySwitch', 'LegacyRouter', 'NetLink', 'Controller', 'SCADA', 'HMI', 'PLC' )
         self.customColors = { 'Switch': 'darkGreen', 'Host': 'blue' }
         self.toolbar = self.createToolbar()
 
@@ -1204,7 +1166,7 @@ class MiniEdit( Frame ):
 
         # Initialize node data
         self.nodeBindings = self.createNodeBindings()
-        self.nodePrefixes = { 'LegacyRouter': 'r', 'LegacySwitch': 's', 'Switch': 's', 'Host': 'h' , 'Controller': 'SDPICS c', 'PLC': 'plc', "HMI": 'hmi', 'SCADA':'scada', 'SDPG' : 'sdpg', 'SDPC' : 'sdpc', 'FW':'fw'}
+        self.nodePrefixes = { 'LegacyRouter': 'r', 'LegacySwitch': 's', 'Switch': 's', 'Host': 'h' , 'Controller': 'c', 'SCADA':'scada', 'HMI' : 'HMI', 'PLC' : 'PLC'}
         self.widgetToItem = {}
         self.itemToWidget = {}
 
@@ -1261,35 +1223,20 @@ class MiniEdit( Frame ):
         self.controllerPopup.add_separator()
         self.controllerPopup.add_command(label='Properties', font=self.font, command=self.controllerDetails )
 
-        self.PLCPopup = Menu(self.top, tearoff=0)
-        self.PLCPopup.add_command(label='PLC Options', font=self.font)
-        self.PLCPopup.add_separator()
-        self.PLCPopup.add_command(label='Properties', font=self.font, command=self.plcDetails)
-
-        self.FWPopup = Menu(self.top, tearoff=0)
-        self.FWPopup.add_command(label='FW Options', font=self.font)
-        self.FWPopup.add_separator()
-        self.FWPopup.add_command(label='Properties', font=self.font, command=self.fwDetails)
-
-        self.HMIPopup = Menu(self.top, tearoff=0)
-        self.HMIPopup.add_command(label='HMI Options', font=self.font)
-        self.HMIPopup.add_separator()
-        self.HMIPopup.add_command(label='Properties', font=self.font, command=self.hmiDetails)
-
         self.SCADAPopup = Menu(self.top, tearoff=0)
         self.SCADAPopup.add_command(label='SCADA Options', font=self.font)
         self.SCADAPopup.add_separator()
         self.SCADAPopup.add_command(label='Properties', font=self.font, command=self.scadaDetails)
 
-        self.SDPGPopup = Menu(self.top, tearoff=0)
-        self.SDPGPopup.add_command(label='SDPG Options', font=self.font)
-        self.SDPGPopup.add_separator()
-        self.SDPGPopup.add_command(label='Properties', font=self.font, command=self.sdpgDetails)
+        self.HMIPopup = Menu(self.top, tearoff=0)
+        self.HMIPopup.add_command(label='HMI Options', font=self.font)
+        self.HMIPopup.add_separator()
+        self.HMIPopup.add_command(label='Properties', font=self.font, command=self.HMIDetails)
 
-        self.SDPCPopup = Menu(self.top, tearoff=0)
-        self.SDPCPopup.add_command(label='SDPC Options', font=self.font)
-        self.SDPCPopup.add_separator()
-        self.SDPCPopup.add_command(label='Properties', font=self.font, command=self.sdpcDetails)
+        self.PLCPopup = Menu(self.top, tearoff=0)
+        self.PLCPopup.add_command(label='PLC Options', font=self.font)
+        self.PLCPopup.add_separator()
+        self.PLCPopup.add_command(label='Properties', font=self.font, command=self.PLCDetails)
 
         # Event handling initalization
         self.linkx = self.linky = self.linkItem = None
@@ -1302,12 +1249,9 @@ class MiniEdit( Frame ):
         self.hostCount = 0
         self.switchCount = 0
         self.controllerCount = 0
-        self.plcCount = 0
-        self.hmiCount = 0
         self.scadaCount = 0
-        self.fwCount = 0
-        self.sdpgCount = 0
-        self.sdpcCount = 0
+        self.HMICount = 0
+        self.PLCCount = 0
         self.net = None
 
         # Close window gracefully
@@ -1474,11 +1418,11 @@ class MiniEdit( Frame ):
 
     def addNode( self, node, nodeNum, x, y, name=None):
         "Add a new node to our canvas."
-        if node == 'Switch':
+        if 'Switch' == node:
             self.switchCount += 1
-        if node == 'Host':
+        if 'Host' == node:
             self.hostCount += 1
-        if node == 'Controller':
+        if 'Controller' == node:
             self.controllerCount += 1
         if name is None:
             name = self.nodePrefixes[ node ] + nodeNum
@@ -1495,17 +1439,14 @@ class MiniEdit( Frame ):
 
     def convertJsonUnicode(self, text):
         "Some part of Mininet don't like Unicode"
-        try:
-            unicode
-        except NameError:
-            return text
         if isinstance(text, dict):
             return {self.convertJsonUnicode(key): self.convertJsonUnicode(value) for key, value in text.items()}
-        if isinstance(text, list):
+        elif isinstance(text, list):
             return [self.convertJsonUnicode(element) for element in text]
-        if isinstance(text, unicode):  # pylint: disable=undefined-variable
+        elif isinstance(text, unicode):
             return text.encode('utf-8')
-        return text
+        else:
+            return text
 
     def loadTopology( self ):
         "Load command."
@@ -1516,7 +1457,7 @@ class MiniEdit( Frame ):
             ('All Files','*'),
         ]
         f = tkFileDialog.askopenfile(filetypes=myFormats, mode='rb')
-        if f is None:
+        if f == None:
             return
         self.newTopology()
         loadedTopology = self.convertJsonUnicode(json.load(f))
@@ -1586,6 +1527,7 @@ class MiniEdit( Frame ):
                 host['opts']['privateDirectory'] = newDirList
             self.hostOpts[hostname] = host['opts']
             icon = self.findWidgetByName(hostname)
+            icon.bind('<Button-3>', self.do_hostPopup )
 
         # Load switches
         switches = loadedTopology['switches']
@@ -1676,11 +1618,10 @@ class MiniEdit( Frame ):
         for widget in self.widgetToItem:
             if name ==  widget[ 'text' ]:
                 return widget
-        return None
 
     def newTopology( self ):
         "New command."
-        for widget in self.widgetToItem:
+        for widget in self.widgetToItem.keys():
             self.deleteItem( self.widgetToItem[ widget ] )
         self.hostCount = 0
         self.switchCount = 0
@@ -1777,7 +1718,7 @@ class MiniEdit( Frame ):
             # debug( "Now saving under %s\n" % fileName )
             f = open(fileName, 'wb')
 
-            f.write("#!/usr/bin/env python\n")
+            f.write("#!/usr/bin/python\n")
             f.write("\n")
             f.write("from mininet.net import Mininet\n")
             f.write("from mininet.node import Controller, RemoteController, OVSController\n")
@@ -1801,7 +1742,7 @@ class MiniEdit( Frame ):
                     if controllerType == 'inband':
                         inBandCtrl = True
 
-            if inBandCtrl:
+            if inBandCtrl == True:
                 f.write("\n")
                 f.write("class InbandController( RemoteController ):\n")
                 f.write("\n")
@@ -1896,7 +1837,7 @@ class MiniEdit( Frame ):
             for widget in self.widgetToItem:
                 name = widget[ 'text' ]
                 tags = self.canvas.gettags( self.widgetToItem[ widget ] )
-                list = ['Host', 'PLC', 'SCADA', 'HMI', 'SDPG', 'SDPC', 'FW']
+                list = ['Host', 'PLC', 'SCADA', 'HMI']
                 for key in list:
                     if key in tags:
                         opts = self.hostOpts[name]
@@ -2034,7 +1975,7 @@ class MiniEdit( Frame ):
             for widget in self.widgetToItem:
                 name = widget[ 'text' ]
                 tags = self.canvas.gettags( self.widgetToItem[ widget ] )
-                list = ['Host', 'PLC', 'SCADA', 'HMI', 'SDPG', 'SDPC', 'FW']
+                list = ['Host', 'SCADA', 'HMI', 'PLC']
                 for key in list:
                     if key in tags:
                         opts = self.hostOpts[name]
@@ -2101,7 +2042,7 @@ class MiniEdit( Frame ):
             for widget in self.widgetToItem:
                 name = widget[ 'text' ]
                 tags = self.canvas.gettags( self.widgetToItem[ widget ] )
-                list = ['Host', 'PLC', 'SCADA', 'HMI', 'SDPG', 'SDPC', 'FW']
+                list = ['Host', 'SCADA', 'HMI', 'PLC']
                 for key in list:
                     if key in tags:
                         opts = self.hostOpts[name]
@@ -2204,7 +2145,7 @@ class MiniEdit( Frame ):
         c = self.canvas
         x, y = c.canvasx( event.x ), c.canvasy( event.y )
         name = self.nodePrefixes[ node ]
-        if node == 'Switch':
+        if 'Switch' == node:
             self.switchCount += 1
             name = self.nodePrefixes[ node ] + str( self.switchCount )
             self.switchOpts[name] = {}
@@ -2212,14 +2153,14 @@ class MiniEdit( Frame ):
             self.switchOpts[name]['hostname']=name
             self.switchOpts[name]['switchType']='default'
             self.switchOpts[name]['controllers']=[]
-        if node == 'LegacyRouter':
+        if 'LegacyRouter' == node:
             self.switchCount += 1
             name = self.nodePrefixes[ node ] + str( self.switchCount )
             self.switchOpts[name] = {}
             self.switchOpts[name]['nodeNum']=self.switchCount
             self.switchOpts[name]['hostname']=name
             self.switchOpts[name]['switchType']='legacyRouter'
-        if node == 'LegacySwitch':
+        if 'LegacySwitch' == node:
             self.switchCount += 1
             name = self.nodePrefixes[ node ] + str( self.switchCount )
             self.switchOpts[name] = {}
@@ -2227,13 +2168,31 @@ class MiniEdit( Frame ):
             self.switchOpts[name]['hostname']=name
             self.switchOpts[name]['switchType']='legacySwitch'
             self.switchOpts[name]['controllers']=[]
-        if node == 'Host':
+        if 'Host' == node:
             self.hostCount += 1
             name = self.nodePrefixes[ node ] + str( self.hostCount )
             self.hostOpts[name] = {'sched':'host'}
             self.hostOpts[name]['nodeNum']=self.hostCount
             self.hostOpts[name]['hostname']=name
-        if node == 'Controller':
+        if node == 'SCADA':
+            self.scadaCount += 1
+            name = self.nodePrefixes[ node ] + str( self.scadaCount )
+            self.hostOpts[name] = {'sched': 'host'}
+            self.hostOpts[name]['nodeNum'] = self.scadaCount
+            self.hostOpts[name]['hostname'] = name
+        if node == 'HMI':
+            self.HMICount += 1
+            name = self.nodePrefixes[ node ] + str( self.HMICount )
+            self.hostOpts[name] = {'sched': 'host'}
+            self.hostOpts[name]['nodeNum'] = self.HMICount
+            self.hostOpts[name]['hostname'] = name
+        if node == 'PLC':
+            self.PLCCount += 1
+            name = self.nodePrefixes[ node ] + str( self.PLCCount )
+            self.hostOpts[name] = {'sched': 'host'}
+            self.hostOpts[name]['nodeNum'] = self.PLCCount
+            self.hostOpts[name]['hostname'] = name
+        if 'Controller' == node:
             name = self.nodePrefixes[ node ] + str( self.controllerCount )
             ctrlr = { 'controllerType': 'ref',
                       'hostname': name,
@@ -2243,42 +2202,6 @@ class MiniEdit( Frame ):
             self.controllers[name] = ctrlr
             # We want to start controller count at 0
             self.controllerCount += 1
-        if node == 'PLC':
-            self.plcCount += 1
-            name = self.nodePrefixes[ node ] + str( self.plcCount )
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.plcCount
-            self.hostOpts[name]['hostname'] = name
-        if node == 'FW':
-            self.fwCount += 1
-            name = self.nodePrefixes[node] + str(self.fwCount)
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.fwCount
-            self.hostOpts[name]['hostname'] = name
-        if node == 'HMI':
-            self.hmiCount += 1
-            name = self.nodePrefixes[ node ] + str( self.hmiCount )
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.hmiCount
-            self.hostOpts[name]['hostname'] = name
-        if node == 'SCADA':
-            self.scadaCount += 1
-            name = self.nodePrefixes[ node ] + str( self.scadaCount )
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.scadaCount
-            self.hostOpts[name]['hostname'] = name
-        if node == 'SDPG':
-            self.sdpgCount += 1
-            name = self.nodePrefixes[ node ] + str( self.sdpgCount )
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.sdpgCount
-            self.hostOpts[name]['hostname'] = name
-        if node == 'SDPC':
-            self.sdpcCount += 1
-            name = self.nodePrefixes[ node ] + str( self.sdpcCount )
-            self.hostOpts[name] = {'sched': 'host'}
-            self.hostOpts[name]['nodeNum'] = self.sdpcCount
-            self.hostOpts[name]['hostname'] = name
 
         icon = self.nodeIcon( node, name )
         item = self.canvas.create_window( x, y, anchor='c', window=icon,
@@ -2287,28 +2210,22 @@ class MiniEdit( Frame ):
         self.itemToWidget[ item ] = icon
         self.selectItem( item )
         icon.links = {}
-        if node == 'Switch':
+        if 'Switch' == node:
             icon.bind('<Button-3>', self.do_switchPopup )
-        if node == 'LegacyRouter':
+        if 'LegacyRouter' == node:
             icon.bind('<Button-3>', self.do_legacyRouterPopup )
-        if node == 'LegacySwitch':
+        if 'LegacySwitch' == node:
             icon.bind('<Button-3>', self.do_legacySwitchPopup )
-        if node == 'Host':
+        if 'Host' == node:
             icon.bind('<Button-3>', self.do_hostPopup )
-        if node == 'Controller':
-            icon.bind('<Button-3>', self.do_controllerPopup )
-        if node == 'PLC':
-            icon.bind('<Button-3>', self.do_PLCPopup )
-        if node == 'FW':
-            icon.bind('<Button-3>', self.do_FWPopup )
-        if node == 'HMI':
-            icon.bind('<Button-3>', self.do_HMIPopup )
         if node == 'SCADA':
             icon.bind('<Button-3>', self.do_SCADAPopup )
-        if node == 'SDPG':
-            icon.bind('<Button-3>', self.do_SDPGPopup )
-        if node == 'SDPC':
-            icon.bind('<Button-3>', self.do_SDPCPopup )
+        if node == 'HMI':
+            icon.bind('<Button-3>', self.do_HMIPopup )
+        if node == 'PLC':
+            icon.bind('<Button-3>', self.do_PLCPopup )
+        if 'Controller' == node:
+            icon.bind('<Button-3>', self.do_controllerPopup )
 
     def clickController( self, event ):
         "Add a new Controller to our canvas."
@@ -2330,23 +2247,15 @@ class MiniEdit( Frame ):
         "Add a new switch to our canvas."
         self.newNode( 'Switch', event )
 
-    def clickPLC ( self, event ):
-        self.newNode('PLC', event)
-
-    def clickFW ( self, event ):
-        self.newNode('FW', event)
-
-    def clickHMI ( self, event ):
-        self.newNode('HMI', event)
-
     def clickSCADA ( self, event ):
         self.newNode('SCADA', event)
 
-    def clickSDPG ( self, event ):
-        self.newNode('SDPG', event)
 
-    def clickSDPC ( self, event ):
-        self.newNode('SDPC', event)
+    def clickPLC ( self, event ):
+        self.newNode('PLC', event)
+
+    def clickHMI ( self, event ):
+        self.newNode('HMI', event)
 
     def dragNetLink( self, event ):
         "Drag a link's endpoint to another node."
@@ -2522,8 +2431,6 @@ class MiniEdit( Frame ):
         # For now, don't allow hosts to be directly linked
         stags = self.canvas.gettags( self.widgetToItem[ source ] )
         dtags = self.canvas.gettags( target )
-        # TODO: Make this less confusing
-        # pylint: disable=too-many-boolean-expressions
         if (('Host' in stags and 'Host' in dtags) or
            ('Controller' in dtags and 'LegacyRouter' in stags) or
            ('Controller' in stags and 'LegacyRouter' in dtags) or
@@ -2656,6 +2563,130 @@ class MiniEdit( Frame ):
             self.hostOpts[name] = newHostOpts
             info( 'New host details for ' + name + ' = ' + str(newHostOpts), '\n' )
 
+    def scadaDetails(self, _ignore=None):
+        if (self.selection is None or
+                self.net is not None or
+                self.selection not in self.itemToWidget):
+            return
+        widget = self.itemToWidget[self.selection]
+        name = widget['text']
+        tags = self.canvas.gettags(self.selection)
+        if 'SCADA' not in tags:
+            return
+
+        prefDefaults = self.hostOpts[name]
+        hostBox = HostDialog(self, title='SCADA Details', prefDefaults=prefDefaults)
+        self.master.wait_window(hostBox.top)
+        if hostBox.result:
+            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
+            newHostOpts['sched'] = hostBox.result['sched']
+            if len(hostBox.result['startCommand']) > 0:
+                newHostOpts['startCommand'] = hostBox.result['startCommand']
+            if len(hostBox.result['stopCommand']) > 0:
+                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
+            if len(hostBox.result['cpu']) > 0:
+                newHostOpts['cpu'] = float(hostBox.result['cpu'])
+            if len(hostBox.result['cores']) > 0:
+                newHostOpts['cores'] = hostBox.result['cores']
+            if len(hostBox.result['hostname']) > 0:
+                newHostOpts['hostname'] = hostBox.result['hostname']
+                name = hostBox.result['hostname']
+                widget['text'] = name
+            if len(hostBox.result['defaultRoute']) > 0:
+                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
+            if len(hostBox.result['ip']) > 0:
+                newHostOpts['ip'] = hostBox.result['ip']
+            if len(hostBox.result['externalInterfaces']) > 0:
+                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
+            if len(hostBox.result['vlanInterfaces']) > 0:
+                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
+            if len(hostBox.result['privateDirectory']) > 0:
+                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
+            self.hostOpts[name] = newHostOpts
+            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
+    def HMIDetails(self, _ignore=None):
+        if (self.selection is None or
+                self.net is not None or
+                self.selection not in self.itemToWidget):
+            return
+        widget = self.itemToWidget[self.selection]
+        name = widget['text']
+        tags = self.canvas.gettags(self.selection)
+        if 'HMI' not in tags:
+            return
+
+        prefDefaults = self.hostOpts[name]
+        hostBox = HostDialog(self, title='HMI Details', prefDefaults=prefDefaults)
+        self.master.wait_window(hostBox.top)
+        if hostBox.result:
+            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
+            newHostOpts['sched'] = hostBox.result['sched']
+            if len(hostBox.result['startCommand']) > 0:
+                newHostOpts['startCommand'] = hostBox.result['startCommand']
+            if len(hostBox.result['stopCommand']) > 0:
+                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
+            if len(hostBox.result['cpu']) > 0:
+                newHostOpts['cpu'] = float(hostBox.result['cpu'])
+            if len(hostBox.result['cores']) > 0:
+                newHostOpts['cores'] = hostBox.result['cores']
+            if len(hostBox.result['hostname']) > 0:
+                newHostOpts['hostname'] = hostBox.result['hostname']
+                name = hostBox.result['hostname']
+                widget['text'] = name
+            if len(hostBox.result['defaultRoute']) > 0:
+                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
+            if len(hostBox.result['ip']) > 0:
+                newHostOpts['ip'] = hostBox.result['ip']
+            if len(hostBox.result['externalInterfaces']) > 0:
+                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
+            if len(hostBox.result['vlanInterfaces']) > 0:
+                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
+            if len(hostBox.result['privateDirectory']) > 0:
+                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
+            self.hostOpts[name] = newHostOpts
+            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
+
+    def PLCDetails(self, _ignore=None):
+        if (self.selection is None or
+                self.net is not None or
+                self.selection not in self.itemToWidget):
+            return
+        widget = self.itemToWidget[self.selection]
+        name = widget['text']
+        tags = self.canvas.gettags(self.selection)
+        if 'PLC' not in tags:
+            return
+
+        prefDefaults = self.hostOpts[name]
+        hostBox = HostDialog(self, title='PLC Details', prefDefaults=prefDefaults)
+        self.master.wait_window(hostBox.top)
+        if hostBox.result:
+            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
+            newHostOpts['sched'] = hostBox.result['sched']
+            if len(hostBox.result['startCommand']) > 0:
+                newHostOpts['startCommand'] = hostBox.result['startCommand']
+            if len(hostBox.result['stopCommand']) > 0:
+                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
+            if len(hostBox.result['cpu']) > 0:
+                newHostOpts['cpu'] = float(hostBox.result['cpu'])
+            if len(hostBox.result['cores']) > 0:
+                newHostOpts['cores'] = hostBox.result['cores']
+            if len(hostBox.result['hostname']) > 0:
+                newHostOpts['hostname'] = hostBox.result['hostname']
+                name = hostBox.result['hostname']
+                widget['text'] = name
+            if len(hostBox.result['defaultRoute']) > 0:
+                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
+            if len(hostBox.result['ip']) > 0:
+                newHostOpts['ip'] = hostBox.result['ip']
+            if len(hostBox.result['externalInterfaces']) > 0:
+                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
+            if len(hostBox.result['vlanInterfaces']) > 0:
+                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
+            if len(hostBox.result['privateDirectory']) > 0:
+                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
+            self.hostOpts[name] = newHostOpts
+            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
     def switchDetails( self, _ignore=None ):
         if ( self.selection is None or
              self.net is not None or
@@ -2740,6 +2771,7 @@ class MiniEdit( Frame ):
         if prefBox.result:
             self.appPrefs = prefBox.result
 
+
     def controllerDetails( self ):
         if ( self.selection is None or
              self.net is not None or
@@ -2773,241 +2805,6 @@ class MiniEdit( Frame ):
                             switch['controllers'].remove(oldName)
                             switch['controllers'].append(name)
 
-    def plcDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'PLC' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        hostBox = HostDialog(self, title='PLC Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        if hostBox.result:
-            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-            newHostOpts['sched'] = hostBox.result['sched']
-            if len(hostBox.result['startCommand']) > 0:
-                newHostOpts['startCommand'] = hostBox.result['startCommand']
-            if len(hostBox.result['stopCommand']) > 0:
-                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
-            if len(hostBox.result['cpu']) > 0:
-                newHostOpts['cpu'] = float(hostBox.result['cpu'])
-            if len(hostBox.result['cores']) > 0:
-                newHostOpts['cores'] = hostBox.result['cores']
-            if len(hostBox.result['hostname']) > 0:
-                newHostOpts['hostname'] = hostBox.result['hostname']
-                name = hostBox.result['hostname']
-                widget['text'] = name
-            if len(hostBox.result['defaultRoute']) > 0:
-                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
-            if len(hostBox.result['ip']) > 0:
-                newHostOpts['ip'] = hostBox.result['ip']
-            if len(hostBox.result['externalInterfaces']) > 0:
-                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
-            if len(hostBox.result['vlanInterfaces']) > 0:
-                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
-            if len(hostBox.result['privateDirectory']) > 0:
-                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
-            self.hostOpts[name] = newHostOpts
-            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
-
-    def fwDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'FW' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        prefDefaults['WhiteListIP'] = ''
-        prefDefaults['BlackListIP'] = ''
-        hostBox = FirewallDialog(self, title='FW Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-        info("node")
-        info(str(hostBox.result))
-        if len(hostBox.result['WhiteListIP']) > 0:
-            newHostOpts['WhiteListIP'] = hostBox.result['WhiteListIP']
-        if len(hostBox.result['BlackListIP']) > 0:
-            newHostOpts['BlackListIP'] = hostBox.result['BlackListIP']
-        self.hostOpts[name] = newHostOpts
-        info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
-
-    def hmiDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'HMI' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        hostBox = HostDialog(self, title='HMI Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        if hostBox.result:
-            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-            newHostOpts['sched'] = hostBox.result['sched']
-            if len(hostBox.result['startCommand']) > 0:
-                newHostOpts['startCommand'] = hostBox.result['startCommand']
-            if len(hostBox.result['stopCommand']) > 0:
-                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
-            if len(hostBox.result['cpu']) > 0:
-                newHostOpts['cpu'] = float(hostBox.result['cpu'])
-            if len(hostBox.result['cores']) > 0:
-                newHostOpts['cores'] = hostBox.result['cores']
-            if len(hostBox.result['hostname']) > 0:
-                newHostOpts['hostname'] = hostBox.result['hostname']
-                name = hostBox.result['hostname']
-                widget['text'] = name
-            if len(hostBox.result['defaultRoute']) > 0:
-                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
-            if len(hostBox.result['ip']) > 0:
-                newHostOpts['ip'] = hostBox.result['ip']
-            if len(hostBox.result['externalInterfaces']) > 0:
-                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
-            if len(hostBox.result['vlanInterfaces']) > 0:
-                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
-            if len(hostBox.result['privateDirectory']) > 0:
-                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
-            self.hostOpts[name] = newHostOpts
-            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
-
-    def scadaDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'SCADA' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        hostBox = HostDialog(self, title='SCADA Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        if hostBox.result:
-            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-            newHostOpts['sched'] = hostBox.result['sched']
-            if len(hostBox.result['startCommand']) > 0:
-                newHostOpts['startCommand'] = hostBox.result['startCommand']
-            if len(hostBox.result['stopCommand']) > 0:
-                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
-            if len(hostBox.result['cpu']) > 0:
-                newHostOpts['cpu'] = float(hostBox.result['cpu'])
-            if len(hostBox.result['cores']) > 0:
-                newHostOpts['cores'] = hostBox.result['cores']
-            if len(hostBox.result['hostname']) > 0:
-                newHostOpts['hostname'] = hostBox.result['hostname']
-                name = hostBox.result['hostname']
-                widget['text'] = name
-            if len(hostBox.result['defaultRoute']) > 0:
-                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
-            if len(hostBox.result['ip']) > 0:
-                newHostOpts['ip'] = hostBox.result['ip']
-            if len(hostBox.result['externalInterfaces']) > 0:
-                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
-            if len(hostBox.result['vlanInterfaces']) > 0:
-                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
-            if len(hostBox.result['privateDirectory']) > 0:
-                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
-            self.hostOpts[name] = newHostOpts
-            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
-
-    def sdpgDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'SDPG' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        hostBox = HostDialog(self, title='SDPG Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        if hostBox.result:
-            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-            newHostOpts['sched'] = hostBox.result['sched']
-            if len(hostBox.result['startCommand']) > 0:
-                newHostOpts['startCommand'] = hostBox.result['startCommand']
-            if len(hostBox.result['stopCommand']) > 0:
-                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
-            if len(hostBox.result['cpu']) > 0:
-                newHostOpts['cpu'] = float(hostBox.result['cpu'])
-            if len(hostBox.result['cores']) > 0:
-                newHostOpts['cores'] = hostBox.result['cores']
-            if len(hostBox.result['hostname']) > 0:
-                newHostOpts['hostname'] = hostBox.result['hostname']
-                name = hostBox.result['hostname']
-                widget['text'] = name
-            if len(hostBox.result['defaultRoute']) > 0:
-                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
-            if len(hostBox.result['ip']) > 0:
-                newHostOpts['ip'] = hostBox.result['ip']
-            if len(hostBox.result['externalInterfaces']) > 0:
-                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
-            if len(hostBox.result['vlanInterfaces']) > 0:
-                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
-            if len(hostBox.result['privateDirectory']) > 0:
-                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
-            self.hostOpts[name] = newHostOpts
-            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
-
-    def sdpcDetails(self, _ignore=None):
-        if (self.selection is None or
-                self.net is not None or
-                self.selection not in self.itemToWidget):
-            return
-        widget = self.itemToWidget[self.selection]
-        name = widget['text']
-        tags = self.canvas.gettags(self.selection)
-        if 'SDPC' not in tags:
-            return
-
-        prefDefaults = self.hostOpts[name]
-        hostBox = HostDialog(self, title='SDPC Details', prefDefaults=prefDefaults)
-        self.master.wait_window(hostBox.top)
-        if hostBox.result:
-            newHostOpts = {'nodeNum': self.hostOpts[name]['nodeNum']}
-            newHostOpts['sched'] = hostBox.result['sched']
-            if len(hostBox.result['startCommand']) > 0:
-                newHostOpts['startCommand'] = hostBox.result['startCommand']
-            if len(hostBox.result['stopCommand']) > 0:
-                newHostOpts['stopCommand'] = hostBox.result['stopCommand']
-            if len(hostBox.result['cpu']) > 0:
-                newHostOpts['cpu'] = float(hostBox.result['cpu'])
-            if len(hostBox.result['cores']) > 0:
-                newHostOpts['cores'] = hostBox.result['cores']
-            if len(hostBox.result['hostname']) > 0:
-                newHostOpts['hostname'] = hostBox.result['hostname']
-                name = hostBox.result['hostname']
-                widget['text'] = name
-            if len(hostBox.result['defaultRoute']) > 0:
-                newHostOpts['defaultRoute'] = hostBox.result['defaultRoute']
-            if len(hostBox.result['ip']) > 0:
-                newHostOpts['ip'] = hostBox.result['ip']
-            if len(hostBox.result['externalInterfaces']) > 0:
-                newHostOpts['externalInterfaces'] = hostBox.result['externalInterfaces']
-            if len(hostBox.result['vlanInterfaces']) > 0:
-                newHostOpts['vlanInterfaces'] = hostBox.result['vlanInterfaces']
-            if len(hostBox.result['privateDirectory']) > 0:
-                newHostOpts['privateDirectory'] = hostBox.result['privateDirectory']
-            self.hostOpts[name] = newHostOpts
-            info('New host details for ' + name + ' = ' + str(newHostOpts), '\n')
 
     def listBridge( self, _ignore=None ):
         if ( self.selection is None or
@@ -3021,8 +2818,6 @@ class MiniEdit( Frame ):
             return
         if 'Switch' in tags or 'LegacySwitch' in tags:
             call(["xterm -T 'Bridge Details' -sb -sl 2000 -e 'ovs-vsctl list bridge " + name + "; read -p \"Press Enter to close\"' &"], shell=True)
-
-
 
     @staticmethod
     def ovsShow( _ignore=None ):
@@ -3043,7 +2838,7 @@ class MiniEdit( Frame ):
             linkopts = {}
         source.links[ dest ] = self.link
         dest.links[ source ] = self.link
-        self.links[ self.link ] = {'type':linktype,
+        self.links[ self.link ] = {'type' :linktype,
                                    'src':source,
                                    'dest':dest,
                                    'linkOpts':linkopts}
@@ -3084,13 +2879,14 @@ class MiniEdit( Frame ):
         tags = self.canvas.gettags(item)
         if 'Controller' in tags:
             # remove from switch controller lists
-            for searchwidget in self.widgetToItem:
-                name = searchwidget[ 'text' ]
-                tags = self.canvas.gettags( self.widgetToItem[ searchwidget ] )
+            for serachwidget in self.widgetToItem:
+                name = serachwidget[ 'text' ]
+                tags = self.canvas.gettags( self.widgetToItem[ serachwidget ] )
                 if 'Switch' in tags:
                     if widget['text'] in self.switchOpts[name]['controllers']:
                         self.switchOpts[name]['controllers'].remove(widget['text'])
-        for link in tuple( widget.links.values() ):
+
+        for link in widget.links.values():
             # Delete from view and model
             self.deleteItem( link )
         del self.itemToWidget[ item ]
@@ -3165,60 +2961,11 @@ class MiniEdit( Frame ):
                     for extInterface in opts['externalInterfaces']:
                         if self.checkIntf(extInterface):
                             Intf( extInterface, node=newSwitch )
+
             elif 'LegacySwitch' in tags:
                 newSwitch = net.addSwitch( name , cls=LegacySwitch)
             elif 'LegacyRouter' in tags:
                 newSwitch = net.addHost( name , cls=LegacyRouter)
-            elif 'Host' in tags:
-                opts = self.hostOpts[name]
-                # debug( str(opts), '\n' )
-                ip = None
-                defaultRoute = None
-                if 'defaultRoute' in opts and len(opts['defaultRoute']) > 0:
-                    defaultRoute = 'via '+opts['defaultRoute']
-                if 'ip' in opts and len(opts['ip']) > 0:
-                    ip = opts['ip']
-                else:
-                    nodeNum = self.hostOpts[name]['nodeNum']
-                    ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
-
-                # Create the correct host class
-                if 'cores' in opts or 'cpu' in opts:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( CPULimitedHost,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=CPULimitedHost
-                else:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( Host,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=Host
-                debug( hostCls, '\n' )
-                newHost = net.addHost( name,
-                                       cls=hostCls,
-                                       ip=ip,
-                                       defaultRoute=defaultRoute
-                                      )
-
-                # Set the CPULimitedHost specific options
-                if 'cores' in opts:
-                    newHost.setCPUs(cores = opts['cores'])
-                if 'cpu' in opts:
-                    newHost.setCPUFrac(f=opts['cpu'], sched=opts['sched'])
-
-                # Attach external interfaces
-                if 'externalInterfaces' in opts:
-                    for extInterface in opts['externalInterfaces']:
-                        if self.checkIntf(extInterface):
-                            Intf( extInterface, node=newHost )
-                if 'vlanInterfaces' in opts:
-                    if len(opts['vlanInterfaces']) > 0:
-                        info( 'Checking that OS is VLAN prepared\n' )
-                        self.pathCheck('vconfig', moduleName='vlan package')
-                        moduleDeps( add='8021q' )
             elif 'PLC' in tags:
                 opts = self.hostOpts[name]
                 # debug( str(opts), '\n' )
@@ -3231,57 +2978,7 @@ class MiniEdit( Frame ):
                 else:
                     nodeNum = self.hostOpts[name]['nodeNum']
                     ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
-
-                # Create the correct host class
-                if 'cores' in opts or 'cpu' in opts:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( CPULimitedHost,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=CPULimitedHost
-                else:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( Host,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=Host
-                debug( hostCls, '\n' )
-                newHost = net.addHost( name,
-                                       cls=hostCls,
-                                       ip=ip,
-                                       defaultRoute=defaultRoute
-                                      )
-
-                # Set the CPULimitedHost specific options
-                if 'cores' in opts:
-                    newHost.setCPUs(cores = opts['cores'])
-                if 'cpu' in opts:
-                    newHost.setCPUFrac(f=opts['cpu'], sched=opts['sched'])
-
-                # Attach external interfaces
-                if 'externalInterfaces' in opts:
-                    for extInterface in opts['externalInterfaces']:
-                        if self.checkIntf(extInterface):
-                            Intf( extInterface, node=newHost )
-                if 'vlanInterfaces' in opts:
-                    if len(opts['vlanInterfaces']) > 0:
-                        info( 'Checking that OS is VLAN prepared\n' )
-                        self.pathCheck('vconfig', moduleName='vlan package')
-                        moduleDeps( add='8021q' )
-            elif 'FW' in tags:
-                opts = self.hostOpts[name]
-                # debug( str(opts), '\n' )
-                ip = None
-                defaultRoute = None
-                if 'defaultRoute' in opts and len(opts['defaultRoute']) > 0:
-                    defaultRoute = 'via '+opts['defaultRoute']
-                if 'ip' in opts and len(opts['ip']) > 0:
-                    ip = opts['ip']
-                else:
-                    nodeNum = self.hostOpts[name]['nodeNum']
-                    ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
+                    ip = ipAdd(i=nodeNum+10, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
 
                 # Create the correct host class
                 if 'cores' in opts or 'cpu' in opts:
@@ -3331,7 +3028,7 @@ class MiniEdit( Frame ):
                 else:
                     nodeNum = self.hostOpts[name]['nodeNum']
                     ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
+                    ip = ipAdd(i=nodeNum+30, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
 
                 # Create the correct host class
                 if 'cores' in opts or 'cpu' in opts:
@@ -3381,7 +3078,7 @@ class MiniEdit( Frame ):
                 else:
                     nodeNum = self.hostOpts[name]['nodeNum']
                     ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
+                    ip = ipAdd(i=nodeNum+20, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
 
                 # Create the correct host class
                 if 'cores' in opts or 'cpu' in opts:
@@ -3419,57 +3116,7 @@ class MiniEdit( Frame ):
                         info( 'Checking that OS is VLAN prepared\n' )
                         self.pathCheck('vconfig', moduleName='vlan package')
                         moduleDeps( add='8021q' )
-            elif 'SDPG' in tags:
-                opts = self.hostOpts[name]
-                # debug( str(opts), '\n' )
-                ip = None
-                defaultRoute = None
-                if 'defaultRoute' in opts and len(opts['defaultRoute']) > 0:
-                    defaultRoute = 'via '+opts['defaultRoute']
-                if 'ip' in opts and len(opts['ip']) > 0:
-                    ip = opts['ip']
-                else:
-                    nodeNum = self.hostOpts[name]['nodeNum']
-                    ipBaseNum, prefixLen = netParse( self.appPrefs['ipBase'] )
-                    ip = ipAdd(i=nodeNum, prefixLen=prefixLen, ipBaseNum=ipBaseNum)
-
-                # Create the correct host class
-                if 'cores' in opts or 'cpu' in opts:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( CPULimitedHost,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=CPULimitedHost
-                else:
-                    if 'privateDirectory' in opts:
-                        hostCls = partial( Host,
-                                           privateDirs=opts['privateDirectory'] )
-                    else:
-                        hostCls=Host
-                debug( hostCls, '\n' )
-                newHost = net.addHost( name,
-                                       cls=hostCls,
-                                       ip=ip,
-                                       defaultRoute=defaultRoute
-                                      )
-
-                # Set the CPULimitedHost specific options
-                if 'cores' in opts:
-                    newHost.setCPUs(cores = opts['cores'])
-                if 'cpu' in opts:
-                    newHost.setCPUFrac(f=opts['cpu'], sched=opts['sched'])
-
-                # Attach external interfaces
-                if 'externalInterfaces' in opts:
-                    for extInterface in opts['externalInterfaces']:
-                        if self.checkIntf(extInterface):
-                            Intf( extInterface, node=newHost )
-                if 'vlanInterfaces' in opts:
-                    if len(opts['vlanInterfaces']) > 0:
-                        info( 'Checking that OS is VLAN prepared\n' )
-                        self.pathCheck('vconfig', moduleName='vlan package')
-                        moduleDeps( add='8021q' )
-            elif 'SDPC' in tags:
+            elif 'Host' in tags:
                 opts = self.hostOpts[name]
                 # debug( str(opts), '\n' )
                 ip = None
@@ -3617,7 +3264,7 @@ class MiniEdit( Frame ):
         for widget in self.widgetToItem:
             name = widget[ 'text' ]
             tags = self.canvas.gettags( self.widgetToItem[ widget ] )
-            list = ['Host', 'PLC', 'SCADA', 'HMI', 'SDPG', 'SDPC', 'FW']
+            list = ['Host','SCADA','HMI','PLC']
             for key in list:
                 if key in tags:
                     newHost = self.net.get(name)
@@ -3697,7 +3344,7 @@ class MiniEdit( Frame ):
         ## NOTE: MAKE SURE THIS IS LAST THING CALLED
         # Start the CLI if enabled
         if self.appPrefs['startCLI'] == '1':
-            info( "\n\n NOTE: PLEASE REMEMBER TO EXIT THE CLI BEFORE YOU PRESS THE STOP BUTTON. Not exiting will prevent MiniEdit from quitting and will prevent you from starting the network again during this session.\n\n")
+            info( "\n\n NOTE: PLEASE REMEMBER TO EXIT THE CLI BEFORE YOU PRESS THE STOP BUTTON. Not exiting will prevent MiniEdit from quitting and will prevent you from starting the network again during this sessoin.\n\n")
             CLI(self.net)
 
     def start( self ):
@@ -3743,7 +3390,7 @@ class MiniEdit( Frame ):
             for widget in self.widgetToItem:
                 name = widget[ 'text' ]
                 tags = self.canvas.gettags( self.widgetToItem[ widget ] )
-                list = ['Host', 'PLC', 'SCADA', 'HMI', 'SDPG', 'SDPC', 'FW']
+                list = ['Host', 'SCADA','HMI','PLC']
                 for key in list:
                     if key in tags:
                         newHost = self.net.get(name)
@@ -3786,61 +3433,6 @@ class MiniEdit( Frame ):
                 # make sure to release the grab (Tk 8.0a1 only)
                 self.controllerPopup.grab_release()
 
-
-    def do_PLCPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.PLCPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.PLCPopup.grab_release()
-
-    def do_FWPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.FWPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.FWPopup.grab_release()
-
-    def do_HMIPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.HMIPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.HMIPopup.grab_release()
-
-    def do_SCADAPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.SCADAPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.SCADAPopup.grab_release()
-
-    def do_SDPGPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.SDPGPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.SDPGPopup.grab_release()
-
-    def do_SDPCPopup(self, event):
-        # display the popup menu
-        if self.net is None:
-            try:
-                self.SDPCPopup.tk_popup(event.x_root, event.y_root, 0)
-            finally:
-                # make sure to release the grab (Tk 8.0a1 only)
-                self.SDPCPopup.grab_release()
-
     def do_legacyRouterPopup(self, event):
         # display the popup menu
         if self.net is not None:
@@ -3865,6 +3457,30 @@ class MiniEdit( Frame ):
                 # make sure to release the grab (Tk 8.0a1 only)
                 self.hostRunPopup.grab_release()
 
+    def do_SCADAPopup(self, event):
+        # display the popup menu
+        if self.net is None:
+            try:
+                self.SCADAPopup.tk_popup(event.x_root, event.y_root, 0)
+            finally:
+                # make sure to release the grab (Tk 8.0a1 only)
+                self.SCADAPopup.grab_release()
+    def do_HMIPopup(self, event):
+        # display the popup menu
+        if self.net is None:
+            try:
+                self.HMIPopup.tk_popup(event.x_root, event.y_root, 0)
+            finally:
+                # make sure to release the grab (Tk 8.0a1 only)
+                self.MHIPopup.grab_release()
+    def do_PLCPopup(self, event):
+        # display the popup menu
+        if self.net is None:
+            try:
+                self.PLCPopup.tk_popup(event.x_root, event.y_root, 0)
+            finally:
+                # make sure to release the grab (Tk 8.0a1 only)
+                self.PLCPopup.grab_release()
     def do_legacySwitchPopup(self, event):
         # display the popup menu
         if self.net is not None:
@@ -3968,8 +3584,7 @@ class MiniEdit( Frame ):
         "Parse custom file and add params before parsing cmd-line options."
         customs = {}
         if os.path.isfile( fileName ):
-            with open( fileName, 'r' ) as f:
-                exec( f.read() )  # pylint: disable=exec-used
+            execfile( fileName, customs, customs )
             for name, val in customs.items():
                 self.setCustom( name, val )
         else:
@@ -4260,7 +3875,10 @@ gGPLHwLwcMIo12Qxu0ABAQA7
             p9SWVaVOfWj1KdauTL9q5UgVbFKsEjGqXVtP40NwcBnCjXtw7tx/
             C8cSBBAQADs=
         """ ),
-
+        'SCADA': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAsCAMAAABFXPg2AAAAAXNSR0IArs4c6QAAAH5QTFRFHjhGGDNCImOHDiIxGjZFECU0IGCCFjE/ChsrHjZDDB8uGz9PIFZy5unrIWiOKEJQZnyNXnSDQFdmHTpJ4+boHkZXHj9SKkJQJ2B+IFt5PXKPESk5W4ulaJm0KkRS/f3+3d/h4OPlP3aARH6cL1hdd4qTPzVGejpSJnReKlJqjjoK1gAAAU1JREFUOMvFlGuXgiAQhgfBSIyshdzCyku3/f+/cGfIyiv7cR+OOsf3DLwzIlCW2hJ1ZVuq+hXYEsoNSDaNNDewxZyKugRtsgCgNyFAZ9n5/D3FGQErmRC4imQgxoBlIjHueDy6RY9okSYAUM3KOck+e++c2x8GfGR3ouyoxzsbTIo9SPMBBj7Zp9Oln7zurn1xLjrsuyy6a084D8tttkZrkFDXkgHkjNoCZjeFd17T5Bdyvu4TvSc3K/K6GmCSft397E7XVq5pRtlp27WQcy/P84esw3IdlisGwcnTefIcrBBxQaOI5SvAweluDDpny3jJlVL0wMsHsQ98YU+ZkxSrGAPlZcWV+V+5YvLpnA+co0zOpcS378I4ybwtDH9gvQ0B+isEnUxjdj87eX/c8WSycvxBk2tzZffHAxVdTHxR2md0tDAob9ncfhDZ7Re0fTOaYEi5BAAAAABJRU5ErkJggg=="""),
+        'PLC': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAcCAMAAABBJv+bAAAAAXNSR0IArs4c6QAAAHJQTFRFAWybJYGqHHqlAGKVAGSX////QpO1AGiZAGaYAGqbOI2xCnCfRJO3AF6SWJ+/Bmydf7XNkL/Ua6rGLoauU5u7PpC0osnbIH2od7HLEHOhZKbDhrnQF3ejzuPssdLhmsXYW6DA9vv8Spa4wNvn4e/05/H1P9yXLQAAAVhJREFUKM9tk4uSgyAMRQPBJoBUfNVntc///8UF7e5sW+44I+OZm5uAQLbr3hyjmv21qxkX2ODVF0wfYhYi3/DZIMGHeGgFthH7Aj8hUd0OpA4QrI71Z2GbGyAIeMmF+dLhIjnUCFiC/VIhbltcwELvaRo5PK9kmfM7JriUpa9VGuui9GK+nVqVxFhVjgnndaYE1ra08TuODSYwyWnbNnUbMe0eIndpd8juY7ZcB0oOpr2vZbOadOcAsvF9bzZzovhYOStct4JOYO5Wq+qJsUp0zqSmA3LtWRer4HC8b7hW+YQQMShTum7m/xhPy2p5x+Cq01moF0YTsJuyrLfadXH09pw97ctNbozu6nrvh6IqF9+q2+lxpj0bi+kaMM0do+Y+yx4dKRzE1rl29T3LYmvEcThcn902FUfsuLqGnxgkql0I0vFrOZh52e4HHA+/as3fqikf+936ASmLGd0IQKnPAAAAAElFTkSuQmCC""" ),
+        'HMI': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAdCAMAAACKeiw+AAAAAXNSR0IArs4c6QAAAH5QTFRF////CBYoN0JQu7/DMjxMk5mhzc/TPUhV9fX25efpcnqFaHB6naGpMDtKNEBOKTREd3+J4+XnztHUSlRijpScOURS5+nprLC2Q0xbpamvZW15VmBsDBgq6evs8PHyAg4ghYuUb3eCHSo5lZuhxsjMFSEz2Nvdn6Sr9ff3s7e9h8Uh4gAAALxJREFUKM/t0tsSgiAUheEd4QEPASqKkqKmOb3/CyY53Qj0BH23/83eMwuA6YuHnkMY8Rh4VJ0EOsFydSMDgpwVKxbIJmZFIsAspM/YZSz5kXtwqb6Z/LMr17/z4MzBkYs1TRyYMJkyYF3q0jWDABUtRejxwEAUxT4020+ouU9sDpSRjwoho1V20jaHVklAqfUw31ojK/ob4MnKk74buiQC8sTKG5IGGvedK9lbEyYffHjlwMv8doLEAdHqDYJ+Ge3T80etAAAAAElFTkSuQmCC"""),
+ 
         'OldSwitch': PhotoImage( data=r"""
             R0lGODlhIAAYAPcAMf//////zP//mf//Zv//M///AP/M///MzP/M
             mf/MZv/MM//MAP+Z//+ZzP+Zmf+ZZv+ZM/+ZAP9m//9mzP9mmf9m
@@ -4312,13 +3930,7 @@ gGPLHwLwcMIo12Qxu0ABAQA7
             ACH5BAEAAAAALAAAAAAWABYAAAhIAAEIHEiwoEGBrhIeXEgwoUKG
             Cx0+hGhQoiuKBy1irChxY0GNHgeCDAlgZEiTHlFuVImRJUWXEGEy
             lBmxI8mSNknm1Dnx5sCAADs=
-        """ ),
-        'PLC': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAcCAMAAABBJv+bAAAAAXNSR0IArs4c6QAAAHJQTFRFAWybJYGqHHqlAGKVAGSX////QpO1AGiZAGaYAGqbOI2xCnCfRJO3AF6SWJ+/Bmydf7XNkL/Ua6rGLoauU5u7PpC0osnbIH2od7HLEHOhZKbDhrnQF3ejzuPssdLhmsXYW6DA9vv8Spa4wNvn4e/05/H1P9yXLQAAAVhJREFUKM9tk4uSgyAMRQPBJoBUfNVntc///8UF7e5sW+44I+OZm5uAQLbr3hyjmv21qxkX2ODVF0wfYhYi3/DZIMGHeGgFthH7Aj8hUd0OpA4QrI71Z2GbGyAIeMmF+dLhIjnUCFiC/VIhbltcwELvaRo5PK9kmfM7JriUpa9VGuui9GK+nVqVxFhVjgnndaYE1ra08TuODSYwyWnbNnUbMe0eIndpd8juY7ZcB0oOpr2vZbOadOcAsvF9bzZzovhYOStct4JOYO5Wq+qJsUp0zqSmA3LtWRer4HC8b7hW+YQQMShTum7m/xhPy2p5x+Cq01moF0YTsJuyrLfadXH09pw97ctNbozu6nrvh6IqF9+q2+lxpj0bi+kaMM0do+Y+yx4dKRzE1rl29T3LYmvEcThcn902FUfsuLqGnxgkql0I0vFrOZh52e4HHA+/as3fqikf+936ASmLGd0IQKnPAAAAAElFTkSuQmCC""" ),
-        'HMI': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAdCAMAAACKeiw+AAAAAXNSR0IArs4c6QAAAH5QTFRF////CBYoN0JQu7/DMjxMk5mhzc/TPUhV9fX25efpcnqFaHB6naGpMDtKNEBOKTREd3+J4+XnztHUSlRijpScOURS5+nprLC2Q0xbpamvZW15VmBsDBgq6evs8PHyAg4ghYuUb3eCHSo5lZuhxsjMFSEz2Nvdn6Sr9ff3s7e9h8Uh4gAAALxJREFUKM/t0tsSgiAUheEd4QEPASqKkqKmOb3/CyY53Qj0BH23/83eMwuA6YuHnkMY8Rh4VJ0EOsFydSMDgpwVKxbIJmZFIsAspM/YZSz5kXtwqb6Z/LMr17/z4MzBkYs1TRyYMJkyYF3q0jWDABUtRejxwEAUxT4020+ouU9sDpSRjwoho1V20jaHVklAqfUw31ojK/ob4MnKk74buiQC8sTKG5IGGvedK9lbEyYffHjlwMv8doLEAdHqDYJ+Ge3T80etAAAAAElFTkSuQmCC"""),
-        'SCADA': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAsCAMAAABFXPg2AAAAAXNSR0IArs4c6QAAAH5QTFRFHjhGGDNCImOHDiIxGjZFECU0IGCCFjE/ChsrHjZDDB8uGz9PIFZy5unrIWiOKEJQZnyNXnSDQFdmHTpJ4+boHkZXHj9SKkJQJ2B+IFt5PXKPESk5W4ulaJm0KkRS/f3+3d/h4OPlP3aARH6cL1hdd4qTPzVGejpSJnReKlJqjjoK1gAAAU1JREFUOMvFlGuXgiAQhgfBSIyshdzCyku3/f+/cGfIyiv7cR+OOsf3DLwzIlCW2hJ1ZVuq+hXYEsoNSDaNNDewxZyKugRtsgCgNyFAZ9n5/D3FGQErmRC4imQgxoBlIjHueDy6RY9okSYAUM3KOck+e++c2x8GfGR3ouyoxzsbTIo9SPMBBj7Zp9Oln7zurn1xLjrsuyy6a084D8tttkZrkFDXkgHkjNoCZjeFd17T5Bdyvu4TvSc3K/K6GmCSft397E7XVq5pRtlp27WQcy/P84esw3IdlisGwcnTefIcrBBxQaOI5SvAweluDDpny3jJlVL0wMsHsQ98YU+ZkxSrGAPlZcWV+V+5YvLpnA+co0zOpcS378I4ybwtDH9gvQ0B+isEnUxjdj87eX/c8WSycvxBk2tzZffHAxVdTHxR2md0tDAob9ncfhDZ7Re0fTOaYEi5BAAAAABJRU5ErkJggg=="""),
-        'SDPG': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAAqCAMAAACTBRsrAAAAAXNSR0IArs4c6QAAAEJQTFRFAny/////D4PBIo3HlsnlLZPKGIjECH6/AHm9BX6/TKPRRaDPHIvFXqzXCIHAE4bDOprNr9fr9Pr9VanVfbzdxeHxLDz3SgAAAMpJREFUOMvt0dsOgyAMgOECCq0KxdP7v+oAN6dWki3Z5f7bjzQlBbW1NneNsOlo8RogGr/xyOiuEUXTQ1VdbLHLPOp7hcK3GpK6zEnDNVc08+pnL1tinpi4IS0LnYEnI9H5PynsDb04tId0eXtkjvtQvmUMg00NmmqcMxVmy1s2Sj6tFtyFgeCQE+xknzOS7MCaZbrb2bQyM7+Hg+xnm//5a+7zSWr3JvTQsJVxvjfhPEFjB5lN986qqsMR/aRUbbWhaJW5aJWXouoB4XIj4q7lI2wAAAAASUVORK5CYII="""),
-        'SDPC': PhotoImage( data=r"""iVBORw0KGgoAAAANSUhEUgAAAB4AAAA4CAMAAADdG7i7AAAAAXNSR0IArs4c6QAAAG9QTFRFAGaXOouvv9nlAF6RSZS2BWqbo8jaAmiZ////AGSVEnKfH3mka6fDAGGUWp68DW+d+Pv91Obukr7TF3Wh4e3zL4SrmsTWhrfOsdHg7PT4jrzRQ5Czx97pdK3HfLLKPY2xQVRbAGiZfHh2VomfDVeDee4QaQAAAptJREFUOMttlduaqyAMhaOCEDkIIuKxndnz/u+4Q6edmaLrpv385ZCsJIJcdu/3aS00zXVdeweStOjQndQHpveMR80RSqHYbKgJewsXtGe2A8KLVkGdRRQ54fq+sZM2bXuAjFv4vc2PuL2j+MbNz2X613sh2ApeWDyE4ZjapyZWYgzJO4rSjaQhbO+Y1trKznJMN5Jq2BuGfkiAqFar933WPb5hQO0s5mSEWsq2g3eMwUtmeg6movNvjSgwk5KpKABWwkOBAQ8pU4oIIRG/xK6lxVHR7toUmxtLEetG8ECHLxGL1f1KvgYBQjSbS+LzDUNv532fqiMiGj0HFO+4iyTt3azvjN4RojibEmLYSEW3H/cOTviR1q0dfbJHuMamqkff+gmvMIhqmP0jvO4CGzYoNSxurGLi8AfPGWPcb4Zq1zK2v6Xl3xfmrSdJhiI2nAz9m9SPD+S0eJEMH/efyZyToVrS6oyzOeuFY8tmckgNuyoHPeqQW6lv7k7a0lBgLLZ1PUTebNIrLONWDZ3pGV3dOgufJQZON96tEt16y7YX2FSeemSp00Gj4Gwo2lQlL11tBYoz7ra+ie04zhu1Kufl5rw3at1H5/wthHh2DNXNMjsvVM8rOwWGYbrRAFKaKuocN4Cuq1yg5BxNEyixWhkVgYCqdo6GzgnbNtELvNLHTZ9yLkBLdxCmR3acSsegr6mJHiWq9otyuI9kePbbVMvJUBBWezl3xKkc9iIwwC72dnSrAmPSuBUt2Cmbjm2WbrZxmxj+GCoyjkO9uGVc8tzf1+q3iVB5wqrdp2lqpywdAV6GYhhc3lxVr1nbAz4HLKtQTU5+T2R86vdjwKJq6bSM/z7n/PFjNpqvD+zTulKJPfX19f03zTSYF/kffCI7iblgt5EAAAAASUVORK5CYII="""),
-        'FW': PhotoImage( data=r"""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""")
+        """ )
     }
 
 def addDictOption( opts, choicesDict, default, name, helpStr=None ):
@@ -4342,7 +3954,8 @@ def addDictOption( opts, choicesDict, default, name, helpStr=None ):
 if __name__ == '__main__':
     setLogLevel( 'info' )
     app = MiniEdit()
-    app.parseArgs()
     ### import topology if specified ###
+    app.parseArgs()
     app.importTopo()
+
     app.mainloop()
