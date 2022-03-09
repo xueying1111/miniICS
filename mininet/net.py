@@ -100,7 +100,7 @@ from math import ceil
 from mininet.cli import CLI
 from mininet.log import info, error, debug, output, warn
 from mininet.node import ( Node, Host, OVSKernelSwitch, DefaultController,
-                           Controller, OVSController )
+                           Controller )
 from mininet.nodelib import NAT
 from mininet.link import Link, Intf
 from mininet.util import ( quietRun, fixLimits, numCores, ensureRoot,
@@ -116,7 +116,7 @@ class Mininet( object ):
 
     # pylint: disable=too-many-arguments
     def __init__( self, topo=None, switch=OVSKernelSwitch, host=Host,
-                  controller=OVSController, link=Link, intf=Intf,
+                  controller=DefaultController, link=Link, intf=Intf,
                   build=True, xterms=False, cleanup=False, ipBase='10.0.0.0/8',
                   inNamespace=False,
                   autoSetMacs=False, autoStaticArp=False, autoPinCpus=False,
@@ -561,10 +561,10 @@ class Mininet( object ):
             if hasattr( swclass, 'batchStartup' ):
                 success = swclass.batchStartup( switches )
                 started.update( { s: s for s in success } )
+        node.cmd('dpctl del-flows')
         info( '\n' )
         if self.waitConn:
             self.waitConnected( self.waitConn )
-        info('1234567')
 
     def stop( self ):
         "Stop the controller(s), switches and hosts"
@@ -663,8 +663,9 @@ class Mininet( object ):
         ploss = None
         if not hosts:
             hosts = self.hosts
-            output( '*** Ping: testing ping reachability\n' )
+            output( 'Ping: testing ping reachability\n' )
         for node in hosts:
+            output("~~xueying Ping~~")
             output( '%s -> ' % node.name )
             for dest in hosts:
                 if node != dest:

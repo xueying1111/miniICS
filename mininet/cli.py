@@ -413,6 +413,24 @@ class CLI( Cmd ):
         "Wait until all switches have connected to a controller"
         self.mn.waitConnected()
 
+    def do_showinfo (self, _line):
+        args = line.split()
+        sw = self.mn.values
+        output(sw)
+
+    def do_initics(self, line):
+        output('Start Init MiniICS... \n')
+        output('Init Network... \n')
+        output('Start Intercept... \n')
+        nodes = self.mn.values()
+        for node in nodes:
+            if node.name[0:1] == 's':
+                call('sh ovs-ofctl add-flow '+ switch.name[0:2] +' in_port=2,action=drop', shell=True)
+                call('sh ovs-ofctl add-flow '+ switch.name[0:2] +' in_port=3,action=drop', shell=True)
+        output('Complete! \n')
+
+
+
     def do_valid(self, line):
         args = line.split()
         if len(args) != 3:
@@ -428,9 +446,49 @@ class CLI( Cmd ):
         if args[2] != "viG=IC5icewW-9i=":
             output('password error \n')
             return
-        sw = self.mn.get('s1')
-        sw.dpctl('add-flow in_port=1,actions=output:2')
-        sw.dpctl('add-flow in_port=2,actions=output:1')
+
+        h1 = args[0]
+        h2 = args[1]
+
+        firstSwitch = ''
+        secSwith = ''
+        firstPort = 0
+        secPort = 0
+        nodes = self.mn.values()
+        for node in nodes:
+            if h1 == node.name:
+                for intf in node.intfList():
+                    if intf.link:
+                        intfs = [ intf.link.intf1, intf.link.intf2 ]
+                        intfs.remove( intf )
+                        output(intfs[0])
+                        s = str(intfs[0])
+                        firstSwitch = s[0:2]
+                        firstPort = int(s[-1])
+                        break
+
+        for node in nodes:
+            if h2 == node.name:
+                for intf in node.intfList():
+                    if intf.link:
+                        intfs = [ intf.link.intf1, intf.link.intf2 ]
+                        intfs.remove( intf )
+                        s = str(intfs[0])
+                        secSwith = s[0:2]
+                        secPort = int(s[-1])
+                        break           
+        
+        assert self  # satisfy pylint and allow override
+        if firstSwitch == secSwith and firstSwitch != '':
+            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ firstPort +',actions=output:' + secPort, shell=True)
+            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ secPort +',actions=output:' + firstPort, shell=True)
+        
+
+        if firstSwitch != secSwith and firstSwitch != '':
+            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port=1,actions=output:' + firstPort, shell=True )
+            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port='+ firstPort +',actions=output:1', shell=True )
+            call( 'ovs-ofctl add-flow '+ secSwith +' in_port=1,actions=output:' + secPort, shell=True )
+            call( 'ovs-ofctl add-flow '+ secSwith +' in_port='+ firstPort +',actions=output:1', shell=True )
 
         # for i in self.mn.links:
         #     if args[1] + '-' in i.intf1.name:
@@ -449,10 +507,10 @@ class CLI( Cmd ):
         #         x = i.intf1.name.split('-')
         #         if 's' in x[0]:
         #             call('ovs-ofctl mod-port ' + x[0] + ' ' + i.intf1.name + ' down', shell=True)
-        output('CHECK FOR DEVICE: ' + args[0] + '\n')
-        output('DEVICE: ' + args[0] + ' CHECK SUCCESS \n')
-        output('CHECK FOR DEVICE: ' + args[1] + '\n')
-        output('DEVICE: ' + args[1] + ' CHECK SUCCESS \n')
+        output('CHECK FOR DEVICE: ' + h1 + '\n')
+        output('DEVICE: ' + h1 + ' CHECK SUCCESS \n')
+        output('CHECK FOR DEVICE: ' + h2 + '\n')
+        output('DEVICE: ' + h2 + ' CHECK SUCCESS \n')
         output('CHECK FOR AUTHKEY...\n')
         output('CHECK AUTHKEY SUCCESS \n')
         output('COMPLETE! \n')
