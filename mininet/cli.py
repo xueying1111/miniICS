@@ -423,12 +423,21 @@ class CLI( Cmd ):
         output('Init Network... \n')
         output('Start Intercept... \n')
         nodes = self.mn.values()
+	nArray = []
         for node in nodes:
-            if node.name[0:1] == 's':
-                call('sh ovs-ofctl add-flow '+ switch.name[0:2] +' in_port=2,action=drop', shell=True)
-                call('sh ovs-ofctl add-flow '+ switch.name[0:2] +' in_port=3,action=drop', shell=True)
-        output('Complete! \n')
+	    n = str(node.name)
+            if n[0:1] == 's' and len(n) < 4:
+		output(n[0:2] + '\n') 
+                nArray.append(n[0:2])
+        
+	assert self
+	for x in nArray:
+	    call('ovs-ofctl del-flows ' + x, shell=True)
 
+	for x in nArray:
+	    call('ovs-ofctl add-flow '+ x +' in_port=2,action=drop', shell=True)
+            call('ovs-ofctl add-flow '+ x +' in_port=3,action=drop', shell=True)
+	output('Complete! \n')	
 
 
     def do_valid(self, line):
@@ -480,16 +489,15 @@ class CLI( Cmd ):
         
         assert self  # satisfy pylint and allow override
         if firstSwitch == secSwith and firstSwitch != '':
-            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ firstPort +',actions=output:' + secPort, shell=True)
-            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ secPort +',actions=output:' + firstPort, shell=True)
-        
+            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ str(firstPort) +',actions=output:' + str(secPort), shell=True)
+            call('ovs-ofctl add-flow '+ firstSwitch +' in_port='+ str(secPort) +',actions=output:' + str(firstPort), shell=True)
 
         if firstSwitch != secSwith and firstSwitch != '':
-            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port=1,actions=output:' + firstPort, shell=True )
-            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port='+ firstPort +',actions=output:1', shell=True )
-            call( 'ovs-ofctl add-flow '+ secSwith +' in_port=1,actions=output:' + secPort, shell=True )
-            call( 'ovs-ofctl add-flow '+ secSwith +' in_port='+ firstPort +',actions=output:1', shell=True )
-
+            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port=1,actions=output:' + str(firstPort), shell=True )
+            call( 'ovs-ofctl add-flow '+ firstSwitch +' in_port='+ str(firstPort) +',actions=output:1', shell=True )
+            call( 'ovs-ofctl add-flow '+ secSwith +' in_port=1,actions=output:' + str(secPort), shell=True )
+            call( 'ovs-ofctl add-flow '+ secSwith +' in_port='+ str(secPort) +',actions=output:1', shell=True )
+	
         # for i in self.mn.links:
         #     if args[1] + '-' in i.intf1.name:
         #         x = i.intf2.name.split('-')
